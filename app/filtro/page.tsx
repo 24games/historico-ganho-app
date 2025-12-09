@@ -11,28 +11,52 @@ interface DatosDia {
   acumulado: number;
 }
 
-// Função para gerar dados dos últimos 14 dias
+// Função para gerar dados dos últimos 14 dias com variações realistas
 const generarDatos14Dias = (): DatosDia[] => {
   const datos: DatosDia[] = [];
   const hoy = new Date();
   let acumulado = 0;
   
-  // Valor total objetivo: ~26.000.000 CLP
-  const totalObjetivo = 26000000;
-  const variacionDiaria = totalObjetivo / 14;
+  // Valor total objetivo: ~26 milhões CLP (número quebrado)
+  // Gerar um número quebrado entre 26.000.000 e 26.999.999
+  const totalObjetivo = 26000000 + Math.floor(Math.random() * 999999);
+  
+  // Base diária média
+  const baseDiaria = totalObjetivo / 14;
+  
+  // Padrão de variação para criar um gráfico mais realista
+  // Simular dias bons e ruins de forma inteligente
+  const patrones = [
+    { factor: 1.3, tipo: 'excelente' }, // Dia excelente
+    { factor: 1.1, tipo: 'bueno' },    // Dia bom
+    { factor: 0.9, tipo: 'regular' },    // Dia regular
+    { factor: 0.7, tipo: 'bajo' },      // Dia baixo
+    { factor: 1.2, tipo: 'bueno' },     // Dia bom
+    { factor: 0.8, tipo: 'regular' },   // Dia regular
+    { factor: 1.4, tipo: 'excelente' }, // Dia excelente
+    { factor: 1.0, tipo: 'normal' },    // Dia normal
+    { factor: 0.9, tipo: 'regular' },   // Dia regular
+    { factor: 1.1, tipo: 'bueno' },     // Dia bom
+    { factor: 0.85, tipo: 'regular' },  // Dia regular
+    { factor: 1.25, tipo: 'excelente' }, // Dia excelente
+    { factor: 1.05, tipo: 'bueno' },    // Dia bom
+    { factor: 1.15, tipo: 'bueno' },   // Dia bom (último dia)
+  ];
   
   for (let i = 13; i >= 0; i--) {
     const fecha = new Date(hoy);
     fecha.setDate(fecha.getDate() - i);
     
-    // Gerar ganância do dia com variação inteligente
-    // Base com variação aleatória de ±20%
-    const base = variacionDiaria;
-    const variacion = (Math.random() - 0.5) * 0.4; // -20% a +20%
-    const gananciaDia = Math.floor(base * (1 + variacion));
+    const indice = 13 - i;
+    const patron = patrones[indice];
     
-    // Garantir que não seja negativo
-    const gananciaFinal = Math.max(gananciaDia, Math.floor(base * 0.6));
+    // Aplicar padrão com pequena variação aleatória adicional (±5%)
+    const variacionAleatoria = (Math.random() - 0.5) * 0.1; // ±5%
+    const gananciaDia = Math.floor(baseDiaria * patron.factor * (1 + variacionAleatoria));
+    
+    // Adicionar variação extra para tornar mais quebrado
+    const variacionExtra = Math.floor(Math.random() * 5000) - 2500; // ±2500
+    const gananciaFinal = Math.max(gananciaDia + variacionExtra, Math.floor(baseDiaria * 0.5));
     
     acumulado += gananciaFinal;
     
@@ -41,17 +65,20 @@ const generarDatos14Dias = (): DatosDia[] => {
     const mes = fecha.toLocaleDateString('es-CL', { month: 'short' });
     
     datos.push({
-      dia: 13 - i + 1,
+      dia: indice + 1,
       fecha: `${diaMes} ${mes}`,
       ganancia: gananciaFinal,
       acumulado: acumulado,
     });
   }
   
-  // Ajustar o último valor para garantir que seja próximo de 26 milhões
+  // Ajustar o último valor para garantir que seja próximo do total objetivo
   const diferencia = totalObjetivo - acumulado;
-  if (datos.length > 0) {
+  if (datos.length > 0 && Math.abs(diferencia) > 1000) {
     datos[datos.length - 1].ganancia += diferencia;
+    datos[datos.length - 1].acumulado = totalObjetivo;
+  } else if (datos.length > 0) {
+    // Se a diferença for pequena, ajustar o acumulado
     datos[datos.length - 1].acumulado = totalObjetivo;
   }
   
@@ -175,7 +202,7 @@ export default function FiltroPage() {
             {/* Total */}
             <div>
               <p className="text-sm text-gray-400 mb-2">Total acumulado</p>
-              <div className="flex items-baseline gap-2">
+              <div className="flex items-baseline gap-2 flex-wrap">
                 <span
                   className="text-3xl md:text-4xl font-bold text-neon-green"
                   style={{
@@ -185,6 +212,7 @@ export default function FiltroPage() {
                 >
                   {formatearCLP(total)}
                 </span>
+                <span className="text-lg md:text-xl font-semibold text-gray-300">CLP</span>
                 <TrendingUp className="w-5 h-5 text-neon-green" />
               </div>
             </div>
@@ -210,7 +238,7 @@ export default function FiltroPage() {
           </button>
         </motion.div>
 
-        {/* Detalle por Día (Opcional - pode ser expandido) */}
+        {/* Detalle por Día - Lista completa dos 14 dias */}
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
@@ -218,20 +246,23 @@ export default function FiltroPage() {
           className="bg-card-bg rounded-lg p-4 border border-gray-800/50"
         >
           <p className="text-sm text-gray-400 mb-3">Evolución diaria</p>
-          <div className="space-y-2 max-h-64 overflow-y-auto pr-2">
+          <div className="space-y-2 max-h-80 overflow-y-auto pr-2">
             {datos.map((dato, index) => (
-              <div
+              <motion.div
                 key={index}
-                className="flex items-center justify-between py-2 border-b border-gray-800/30 last:border-0"
+                initial={{ opacity: 0, x: -10 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ duration: 0.3, delay: 0.2 + index * 0.02 }}
+                className="flex items-center justify-between py-2.5 border-b border-gray-800/30 last:border-0 hover:bg-gray-900/30 rounded px-2 transition-colors"
               >
                 <div className="flex items-center gap-3">
                   <div className="w-2 h-2 rounded-full bg-neon-green drop-shadow-[0_0_4px_rgba(0,255,0,0.6)]"></div>
-                  <span className="text-sm text-gray-300">{dato.fecha}</span>
+                  <span className="text-sm font-medium text-gray-300">{dato.fecha}</span>
                 </div>
                 <span className="text-sm font-semibold text-neon-green">
                   +{formatearCLP(dato.ganancia)}
                 </span>
-              </div>
+              </motion.div>
             ))}
           </div>
         </motion.div>
@@ -239,4 +270,5 @@ export default function FiltroPage() {
     </div>
   );
 }
+
 

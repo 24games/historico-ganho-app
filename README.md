@@ -40,3 +40,4 @@ Acesse [http://localhost:3000](http://localhost:3000) no navegador.
 - `HistorialGanhos` - Componente principal com a lista de ganhos
 
 
+
